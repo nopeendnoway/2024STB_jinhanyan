@@ -49,3 +49,6 @@ text(x=bp, y=entry, labels=entry, pos=3)#막대그래프에 값 표시
 
 #막대그래프3 편집(가로)
 barplot(table(KOTRA2024 $Area),col=pal1, xlab = "진출대륙명", ylab = "진출기업수", xlim=c(0,7000), horiz=TRUE)
+
+entry <-c(334,5843,727,444,63,819,452,2331,274,280)#entry에 값 대입
+text(x=entry, y=bp, labels=entry, pos=4)#막대그래프에 값 표시
