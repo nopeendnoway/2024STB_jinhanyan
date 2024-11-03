@@ -32,67 +32,58 @@ summary(congestion1$s0530)
 congestion1$day_mean <- rowMeans(congestion1[,c('s0530','s0600','s0630','s0700','s0730','s0800','s0830','s0900','s0930','s1000','s1030','s1100','s1130','s1200','s1230','s1300','s1330','s1400','s1430','s1500','s1530','s1600','s1630','s1700','s1730','s1800','s1830','s1900','s1930','s2000','s2030','s2100','s2130','s2200','s2230','s2300','s2330')])
 
 #데이터분석
-#1.  수도권 지하철의 하루 평균 혼잡도？
+#1.  수도권 지하철의 하루 평균 혼잡도
 mean_congestion <- mean(congestion1$day_mean)
 mean_congestion
 
-#2. 호선별 하루평균혼잡도？
+#2. 호선별 하루평균혼잡도
 line_mean_congestion <- congestion1 %>%
   group_by(line) %>%
   summarise(mean_congestion = mean(day_mean))
 line_mean_congestion
 
-#2. 호선별 출근시간(07:00~09:00)의 혼잡도 평균？
-# 计算每个线路在07:00到09:00之间的平均拥挤度
-# 假设congestion1数据集中有表示拥挤度的列，如s0700, s0730, s0800, s0830, s0900
-# 并且这些列的值表示了对应时间点的拥挤度
-
-morning_avg_congestion <- congestion1 %>%
-  # 确保没有缺失值
+#2. 호선별 출근시간(07:00~09:00)의 혼잡도 평균
+morning_congestion_by_time <- congestion1 %>%
   filter(complete.cases(s0700, s0730, s0800, s0830, s0900)) %>%
-  # 按线路分组
   group_by(line) %>%
-  # 计算每个时间点的平均拥挤度，并计算整个时间段的平均值
   summarise(
     avg_0700 = mean(s0700, na.rm = TRUE),
     avg_0730 = mean(s0730, na.rm = TRUE),
     avg_0800 = mean(s0800, na.rm = TRUE),
     avg_0830 = mean(s0830, na.rm = TRUE),
-    avg_0900 = mean(s0900, na.rm = TRUE),
-    avg_morning = mean(c(s0700, s0730, s0800, s0830, s0900), na.rm = TRUE)
+    avg_0900 = mean(s0900, na.rm = TRUE)
   )
 
-# 查看结果
-morning_avg_congestion
-#2-1. 호선별 출근시간(07:00~09:00)의 기술통계？
+#2-1. 호선별 출근시간(07:00~09:00)의 기술통계
 morning_congestion_stats <- congestion1 %>%
   select(line, s0700, s0730, s0800, s0830, s0900) %>%
   group_by(line) %>%
   summarise(
-    mean_morning = mean(c_across(everything())),
-    sd_morning = sd(c_across(everything())),
-    min_morning = min(c_across(everything())),
-    max_morning = max(c_across(everything())),
-    median_morning = median(c_across(everything()))
+    mean_morning = mean(c_across(starts_with('s07')), na.rm = TRUE),
+    sd_morning = sd(c_across(starts_with('s07')), na.rm = TRUE),
+    min_morning = min(c_across(starts_with('s07')), na.rm = TRUE),
+    max_morning = max(c_across(starts_with('s07')), na.rm = TRUE),
+    median_morning = median(c_across(starts_with('s07')), na.rm = TRUE)
   )
-morning_congestion_stats
 
-#2-2. 평균혼잡도가 가장 높은 시간대를 막대그래프로 그리기？
+#2-2. 평균혼잡도가 가장 높은 시간대를 막대그래프로 그리기
 ggplot(morning_congestion_stats, aes(x = line, y = mean_morning, fill = line)) +
   geom_bar(stat = "identity") +
   labs(title = "호선별 출근시간 평균혼잡도", x = "호선", y = "평균혼잡도")
 
-#2-3. 평균혼잡도가 가장 높은 호선에서 기여도가 높은 역？
-max_line <- max(morning_congestion_stats$mean_morning)
-max_line_congestion <- congestion1 %>%
-  filter(line == which(morning_congestion_stats$mean_morning == max_line)) %>%
+#2-3. 평균혼잡도가 가장 높은 호선에서 기여도가 높은 역
+top_lines <- morning_congestion_stats %>%
+  top_n(4, mean_morning) %>%
+  pull(line)
+
+top_lines_congestion <- congestion1 %>%
+  filter(line %in% top_lines) %>%
   select(station, s0700, s0730, s0800, s0830, s0900) %>%
   group_by(station) %>%
   summarise(
     mean_station = mean(c_across(everything()))
   ) %>%
   arrange(desc(mean_station))
-max_line_congestion
 
 
 #3.08시 지하철 혼잡도 범주화/범주별 빈도분석
@@ -115,13 +106,14 @@ congestion1 %>%
   arrange(desc(pct))%>%
   head(5)
 
-#4. 호선별 퇴근시간(18:00~20:00)의 혼잡도 평균？
+#4. 호선별 퇴근시간(18:00~20:00)의 혼잡도 평균
 evening_congestion_mean <- congestion1 %>%
   select(line, s1700, s1730, s1800, s1830, s1900) %>%
   group_by(line) %>%
   summarise(mean_evening = mean(c_across(everything())))
 evening_congestion_mean
-#4-1. 호선별 퇴근시간(18:00~20:00)의 기술통계？
+
+#4-1. 호선별 퇴근시간(18:00~20:00)의 기술통계
 evening_congestion_stats <- congestion1 %>%
   select(line, s1700, s1730, s1800, s1830, s1900) %>%
   group_by(line) %>%
@@ -133,12 +125,12 @@ evening_congestion_stats <- congestion1 %>%
     median_evening = median(c_across(everything()))
   )
 evening_congestion_stats
-#4-2. 평균혼잡도가 가장 높은 시간대를 막대그래프로 그리기？
+#4-2. 평균혼잡도가 가장 높은 시간대를 막대그래프로 그리기
 ggplot(evening_congestion_stats, aes(x = line, y = mean_evening, fill = line)) +
   geom_bar(stat = "identity") +
   labs(title = "Average amount of congestion during rush hour by line", x = "line", y = "Average Confusion")
 
-#4-3. 평균혼잡도가 가장 높은 호선에서 기여도가 높은 역？
+#4-3. 평균혼잡도가 가장 높은 호선에서 기여도가 높은 역
 max_line_evening <- max(evening_congestion_stats$mean_evening)
 max_line_congestion_evening <- congestion1 %>%
   filter(line == which(evening_congestion_stats$mean_evening == max_line_evening)) %>%
